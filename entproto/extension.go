@@ -160,12 +160,44 @@ func (e *Extension) generate(g *gen.Graph) error {
 				if err != nil {
 					return fmt.Errorf("entproto: failed generating generate.go file for %q: %w", protoFilePath, err)
 				}
-				toBase, err := filepath.Rel(abs, g.Config.Target)
-				if err != nil {
-					return fmt.Errorf("entproto: failed generating generate.go file for %q: %w", protoFilePath, err)
+				relativeFromAbs := func(target string) (string, error) {
+					absTarget, err := filepath.Abs(target)
+					if err != nil {
+						return "", fmt.Errorf("entproto: failed generating generate.go file for %q: %w", protoFilePath, err)
+					}
+					toBase, err := filepath.Rel(abs, absTarget)
+					if err != nil {
+						return "", fmt.Errorf("entproto: failed generating generate.go file for %q: %w", protoFilePath, err)
+					}
+					return toBase, nil
 				}
-				toSchema := filepath.Join(toBase, "schema")
-				contents := protocGenerateGo(fd, toSchema)
+				// TODO(kdevo): there should be a more elegant way for practically getting the package path:
+				getCommonPrefix := func(p1, p2 string) string {
+					parts1 := strings.Split(p1, "/")
+					parts2 := strings.Split(p2, "/")
+					if len(parts2) > len(parts1) {
+						parts1, parts2 = parts2, parts1
+					}
+					builder := strings.Builder{}
+					for i := range parts2 {
+						if parts1[i] != parts2[i] {
+							break
+						}
+						builder.WriteString(parts1[i])
+						builder.WriteString("/")
+					}
+					return builder.String()
+				}
+				toEnt, err := relativeFromAbs(g.Config.Target)
+				if err != nil {
+					return err
+				}
+				pkgPrefix := getCommonPrefix(g.Config.Package, g.Config.Schema)
+				toSchema, err := relativeFromAbs(strings.ReplaceAll(g.Config.Schema, pkgPrefix, ""))
+				if err != nil {
+					return err
+				}
+				contents := protocGenerateGo(fd, toSchema, toEnt, g.Config.Package)
 				if err := os.WriteFile(genGoPath, []byte(contents), 0600); err != nil {
 					return fmt.Errorf("entproto: failed generating generate.go file for %q: %w", protoFilePath, err)
 				}
@@ -184,7 +216,7 @@ func fileExists(fpath string) bool {
 	return true
 }
 
-func protocGenerateGo(fd *desc.FileDescriptor, toSchemaDir string) string {
+func protocGenerateGo(fd *desc.FileDescriptor, toSchemaDir, entPath, entPackage string) string {
 	levelsUp := len(strings.Split(fd.GetPackage(), "."))
 	toProtoBase := ""
 	for i := 0; i < levelsUp; i++ {
@@ -198,7 +230,7 @@ func protocGenerateGo(fd *desc.FileDescriptor, toSchemaDir string) string {
 		"--go_opt=paths=source_relative",
 		"--go-grpc_opt=paths=source_relative",
 		"--entgrpc_out=" + toProtoBase,
-		"--entgrpc_opt=paths=source_relative,schema_path=" + toSchemaDir,
+		fmt.Sprintf("--entgrpc_opt=paths=source_relative,schema_path=%s,ent_path=%s,ent_package=%s", toSchemaDir, entPath, entPackage),
 		fd.GetName(),
 	}
 	goGen := fmt.Sprintf("//go:generate %s", strings.Join(protocCmd, " "))

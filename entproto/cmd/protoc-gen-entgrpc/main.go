@@ -39,14 +39,14 @@ var (
 func main() {
 	var flags flag.FlagSet
 	entSchemaPath = flags.String("schema_path", "", "ent schema path")
-	entTargetPath := flags.String("target_path", "", "ent target path")
-	entPackage := flags.String("package", "", "ent package")
+	entPath := flags.String("ent_path", "", "ent target path")
+	entPackage := flags.String("ent_package", "", "ent package")
 	protogen.Options{
 		ParamFunc: flags.Set,
 	}.Run(func(plg *protogen.Plugin) error {
 		g, err := entc.LoadGraph(*entSchemaPath, &gen.Config{
 			Schema:  *entSchemaPath,
-			Target:  *entTargetPath,
+			Target:  *entPath,
 			Package: *entPackage,
 		})
 		if err != nil {
