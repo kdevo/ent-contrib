@@ -5,6 +5,10 @@ inputs:
     description: Run go mod tidy after generate
     required: false
     default: ""
+  cmd:
+    description: Command to run for generating files
+    required: false
+    default: "go generate ./..."
   working-directory:
     default: "."
     required: false
@@ -20,7 +24,7 @@ runs:
             process.chdir("${{inputs.working-directory}}");
           }
           core.info('checking generated files are checked in.')
-          await exec.exec('go generate ./...');
+          await exec.exec("${{inputs.cmd}}");
           if( "${{inputs.tidy}}" != "") {
             core.info('running go mod tidy.')
             await exec.exec('go mod tidy');
@@ -36,7 +40,7 @@ runs:
           await exec.exec('git', ['status', '--porcelain'], options)
           if (out.length > 0) {
             core.info(out)
-            core.setFailed('Generated code not checked in. Run go generate ./...')
+            core.setFailed('Generated code not checked in. Please run `${{inputs.cmd}}`!')
             return
           }
           core.info('Generated code checked-in.');
