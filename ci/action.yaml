@@ -39,6 +39,7 @@ runs:
           };
           await exec.exec('git', ['status', '--porcelain'], options)
           if (out.length > 0) {
+            await exec.exec('git', ['diff'], options)
             core.info(out)
             core.setFailed('Generated code not checked in. Please run `${{inputs.cmd}}`!')
             return
