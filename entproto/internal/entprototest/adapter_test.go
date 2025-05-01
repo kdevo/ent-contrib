@@ -36,7 +36,7 @@ func (suite *AdapterTestSuite) SetupSuite() {
 	if err != nil {
 		suite.FailNowf("test suite init failed", "%v", err)
 	}
-	adapter, err := entproto.LoadAdapter(graph)
+	adapter, err := entproto.LoadAdapter(graph, "")
 	if err != nil {
 		suite.FailNowf("test suite failed", "%v", err)
 	}

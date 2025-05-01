@@ -58,12 +58,20 @@ type Extension struct {
 	entc.DefaultExtension
 	protoDir    string
 	skipGenFile bool
+	goPkg       string
 }
 
 // WithProtoDir sets the directory where the generated .proto files will be written.
 func WithProtoDir(dir string) ExtensionOption {
 	return func(e *Extension) {
 		e.protoDir = dir
+	}
+}
+
+// WithProtoDir sets the directory where the generated .proto files will be written.
+func WithGoPkg(pkg string) ExtensionOption {
+	return func(e *Extension) {
+		e.goPkg = pkg
 	}
 }
 
@@ -124,10 +132,11 @@ func (e *Extension) generate(g *gen.Graph) error {
 	if e.protoDir != "" {
 		entProtoDir = e.protoDir
 	}
-	adapter, err := LoadAdapter(g)
+	adapter, err := LoadAdapter(g, e.goPkg)
 	if err != nil {
 		return fmt.Errorf("entproto: failed parsing ent graph: %w", err)
 	}
+
 	var errs error
 	for _, schema := range g.Schemas {
 		name := schema.Name
@@ -197,7 +206,7 @@ func (e *Extension) generate(g *gen.Graph) error {
 				if err != nil {
 					return err
 				}
-				contents := protocGenerateGo(fd, toSchema, toEnt, g.Config.Package)
+				contents := e.protocGenerateGo(fd, toSchema, toEnt, g.Config.Package)
 				if err := os.WriteFile(genGoPath, []byte(contents), 0600); err != nil {
 					return fmt.Errorf("entproto: failed generating generate.go file for %q: %w", protoFilePath, err)
 				}
@@ -216,7 +225,7 @@ func fileExists(fpath string) bool {
 	return true
 }
 
-func protocGenerateGo(fd *desc.FileDescriptor, toSchemaDir, entPath, entPackage string) string {
+func (e *Extension) protocGenerateGo(fd *desc.FileDescriptor, toSchemaDir, entPath, entPackage string) string {
 	levelsUp := len(strings.Split(fd.GetPackage(), "."))
 	toProtoBase := ""
 	for i := 0; i < levelsUp; i++ {

@@ -69,7 +69,7 @@ func processFile(gen *protogen.Plugin, file *protogen.File, graph *gen.Graph) er
 	if len(file.Services) == 0 {
 		return nil
 	}
-	adapter, err := entproto.LoadAdapter(graph)
+	adapter, err := entproto.LoadAdapter(graph, "")
 	if err != nil {
 		return err
 	}
